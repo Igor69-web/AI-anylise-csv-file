@@ -1,38 +1,435 @@
-.App {
+/* Основные стили */
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 30px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* Заголовок */
+.app h1 {
+  text-align: center;
+  color: white;
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 40px;
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
+}
+
+/* Секция загрузки */
+.upload-section {
+  background: white;
+  margin: 30px 0;
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 3px dashed #e0e0e0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.upload-section:hover {
+  border-color: #667eea;
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+}
+
+.upload-section h2 {
+  color: #333;
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+/* Поле выбора файла */
+.file-input {
+  margin: 20px 0;
+  padding: 15px 30px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  background: #f8f9fa;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.file-input:hover {
+  border-color: #667eea;
+  background: white;
+}
+
+.file-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Информация о файле */
+.file-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 20px;
+  margin: 30px 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border-left: 6px solid #ff6b6b;
+}
+
+.file-info h3 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.file-info p {
+  font-size: 1.1rem;
+  margin: 8px 0;
+  opacity: 0.9;
+}
+
+/* Результаты анализа */
+.analysis-result {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 20px;
+  margin: 30px 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border-left: 6px solid #ffe66d;
+}
+
+.analysis-result h2 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.analysis-result p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  opacity: 0.95;
+}
+
+/* Секция графиков */
+.charts-section {
+  margin: 40px 0;
+}
+
+.charts-section h2 {
+  color: white;
+  font-size: 2.2rem;
+  text-align: center;
+  margin-bottom: 30px;
+  font-weight: 600;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Сетка графиков */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+  gap: 30px;
+  margin: 20px 0;
+}
+
+/* Контейнер графика */
+.chart-container {
+  background: white;
+  padding: 25px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 1px solid #e0e0e0;
+  backdrop-filter: blur(10px);
+}
+
+.chart-container:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.chart-container h3 {
+  color: #333;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 600;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+/* График */
+.chart {
+  height: 320px;
+  margin-top: 15px;
+}
+
+/* Предпросмотр данных */
+.preview-section {
+  margin: 40px 0;
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.preview-section h2 {
+  color: #333;
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  font-weight: 600;
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.table-container {
+  overflow-x: auto;
+  margin: 20px 0;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* Таблица */
+.csv-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  font-size: 0.95rem;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.csv-table th,
+.csv-table td {
+  border: 1px solid #e0e0e0;
+  padding: 12px 15px;
+  text-align: left;
+}
+
+.csv-table th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.csv-table tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.csv-table tr:hover {
+  background-color: #e3f2fd;
+  transform: scale(1.01);
+  transition: all 0.2s ease;
+}
+
+/* Кнопки действий */
+.actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  gap: 20px;
+  margin: 30px 0;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  flex-wrap: wrap;
+}
+
+/* Базовые стили кнопок */
+.btn {
+  padding: 15px 30px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  min-width: 180px;
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+  transform: translateY(-1px);
+}
+
+/* Кнопка анализа */
+.btn-analyze {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  margin-top: 15px;
+}
+
+.btn-analyze:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #d63031 100%);
+}
+
+.btn-analyze:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Кнопка скачивания */
+.btn-download {
+  background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.btn-download:hover {
+  background: linear-gradient(135deg, #00a085 0%, #008c75 100%);
 }
 
-@keyframes App-logo-spin {
+/* Кнопка очистки */
+.btn-clear {
+  background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+  color: white;
+}
+
+.btn-clear:hover {
+  background: linear-gradient(135deg, #2d3436 0%, #1e2124 100%);
+}
+
+/* Сообщения о загрузке */
+.upload-section p, .file-info p {
+  font-size: 1.1rem;
+  margin: 10px 0;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .app {
+    padding: 15px;
+  }
+  
+  .app h1 {
+    font-size: 2.2rem;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .chart-container {
+    padding: 20px;
+  }
+  
+  .upload-section, .file-info, .analysis-result {
+    padding: 25px;
+    margin: 20px 0;
+  }
+  
+  .btn {
+    padding: 12px 25px;
+    font-size: 1rem;
+    min-width: 160px;
+  }
+  
+  .actions {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* Анимации */
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(30px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+.chart-container, .upload-section, .file-info, .analysis-result {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Кастомный скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+/* Подсветка при перетаскивании файла */
+.upload-section.drag-over {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  transform: scale(1.02);
+}
+
+/* Индикаторы загрузки */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Уведомления */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 25px;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+.notification.success {
+  background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+}
+
+.notification.error {
+  background: linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Иконки */
+.icon {
+  margin-right: 8px;
+  font-size: 1.2em;
 }
