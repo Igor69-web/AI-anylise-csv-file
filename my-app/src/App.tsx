@@ -1,320 +1,336 @@
-import React, { useState } from 'react';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend } from 'chart.js';
-import { Bar, Line } from 'react-chartjs-2';
-import './App.css';
+// src/App.tsx
+import React, { useState } from "react";
+import Papa from "papaparse";
+import { Bar, Line, Pie } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Tooltip,
+  Legend
+} from "chart.js";
 
-// Регистрируем компоненты Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
-// Типы
-interface CSVData {
-  headers: string[];
-  rows: string[][];
+import "./App.css";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
+  Tooltip,
+  Legend
+);
+
+// ENV keys
+const DEEPSEEK_KEY = process.env.REACT_APP_DEEPSEEK_API_KEY;
+const OPENAI_KEY = process.env.REACT_APP_OPENAI_API_KEY;
+const GEMINI_KEY = process.env.REACT_APP_GEMINI_API_KEY;
+
+const detectProvider = () => {
+  if (DEEPSEEK_KEY) return "deepseek";
+  if (OPENAI_KEY) return "openai";
+  if (GEMINI_KEY) return "gemini";
+  return "none";
+};
+
+// extract safe json
+function extractFirstJSONChunk(text: string): string | null {
+  if (!text) return null;
+
+  try {
+    JSON.parse(text);
+    return text;
+  } catch {}
+
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    if (depth === 0) {
+      const candidate = text.slice(start, i + 1);
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {}
+    }
+  }
+
+  return null;
 }
 
-interface ChartData {
-  type: 'bar' | 'line';
-  title: string;
-  data: {
-    labels: string[];
-    datasets: {
-      label: string;
-      data: number[];
-      backgroundColor: string;
-      borderColor?: string;
-    }[];
+async function callDeepSeek(prompt: string) {
+  const url = "https://api.deepseek.com/chat/completions";
+  const body = {
+    model: "deepseek-chat",
+    messages: [
+      { role: "system", content: "Ты — ИИ для анализа таблиц. Отвечай строго JSON." },
+      { role: "user", content: prompt }
+    ]
   };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${DEEPSEEK_KEY}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    try {
+      const j = JSON.parse(text);
+      throw new Error(j.message || JSON.stringify(j));
+    } catch {
+      throw new Error(`DeepSeek error: ${res.status}`);
+    }
+  }
+
+  try {
+    const j = JSON.parse(text);
+    return j?.choices?.[0]?.message?.content ?? text;
+  } catch {
+    return text;
+  }
+}
+
+async function callOpenAI(prompt: string) {
+  const url = "https://api.openai.com/v1/chat/completions";
+  const body = {
+    model: "gpt-4o-mini",
+    temperature: 0.0,
+    messages: [{ role: "user", content: prompt }]
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
+    body: JSON.stringify(body)
+  });
+
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error?.message);
+
+  return j.choices?.[0]?.message?.content ?? "";
+}
+
+async function callGemini(prompt: string) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+
+  const text = await res.text();
+  if (!res.ok) throw new Error("Gemini error " + res.status);
+
+  try {
+    const j = JSON.parse(text);
+    return j?.candidates?.[0]?.content?.parts?.[0]?.text ?? text;
+  } catch {
+    return text;
+  }
 }
 
 const App: React.FC = () => {
-  const [csvData, setCsvData] = useState<CSVData | null>(null);
-  const [fileName, setFileName] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [charts, setCharts] = useState<ChartData[]>([]);
-  const [analysisResult, setAnalysisResult] = useState<string>('');
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [analysisText, setAnalysisText] = useState("");
+  const [charts, setCharts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [provider, setProvider] = useState(detectProvider());
 
-  // Обработчик загрузки файла
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    
+  // upload CSV
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.csv')) {
-      alert('Пожалуйста, выберите CSV файл');
-      return;
-    }
-
-    setIsLoading(true);
-    setFileName(file.name);
+    setAnalysisText("");
     setCharts([]);
-    setAnalysisResult('');
 
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsedData = parseCSV(content);
-        setCsvData(parsedData);
-      } catch (error) {
-        alert('Ошибка при чтении файла');
-        console.error(error);
-      } finally {
-        setIsLoading(false);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (res) => {
+        setCsvData(res.data as any[]);
       }
-    };
-
-    reader.readAsText(file);
+    });
   };
 
-  // Парсинг CSV
-  const parseCSV = (content: string): CSVData => {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    const headers = lines[0].split(',').map(header => header.trim());
-    const rows = lines.slice(1).map(line => 
-      line.split(',').map(cell => cell.trim())
-    );
+  // Prompt with AI-colors support
+  const buildPrompt = (data: any[]) => {
+    return `
+Проанализируй таблицу (JSON-массив объектов). 
+Верни строго JSON:
 
-    return { headers, rows };
+{
+ "analysis": "текст",
+ "charts": [
+   { 
+     "title": "string",
+     "type": "bar|line|pie",
+     "labels": [...],
+     "values": [...],
+     "colors": ["#HEX","#HEX", ...]  // цвета для каждого значения
+   }
+ ]
+}
+
+Важно:
+- "colors" должен быть массивом HEX цветовых кодов.
+- Палитра должна быть визуально гармоничной (pastel / neon / ocean / warm).
+- Длина colors = длине values.
+
+Данные:
+${JSON.stringify(data, null, 2)}
+`;
   };
 
-  // Анализ данных с помощью AI
-  const analyzeWithAI = async () => {
-    if (!csvData) return;
+  const analyze = async () => {
+    if (!csvData.length) return alert("Загрузите CSV");
 
-    setIsAnalyzing(true);
+    setLoading(true);
+    setAnalysisText("");
+    setCharts([]);
+
     try {
-      // Здесь будет вызов OpenAI API
-      const analysis = await analyzeData(csvData);
-      setAnalysisResult(analysis.insights);
-      
-      // Создаем графики на основе анализа
-      const generatedCharts = generateCharts(csvData, analysis.recommendations);
-      setCharts(generatedCharts);
-    } catch (error) {
-      console.error('Ошибка анализа:', error);
-      alert('Ошибка при анализе данных');
+      const prompt = buildPrompt(csvData);
+
+      let raw = "";
+      if (provider === "deepseek") raw = await callDeepSeek(prompt);
+      else if (provider === "openai") raw = await callOpenAI(prompt);
+      else if (provider === "gemini") raw = await callGemini(prompt);
+      else throw new Error("Нет AI ключей");
+
+      const chunk = extractFirstJSONChunk(raw);
+      if (!chunk) throw new Error("AI вернул не JSON:\n" + raw);
+
+      const parsed = JSON.parse(chunk);
+
+      setAnalysisText(parsed.analysis ?? "");
+      const chartsParsed = (parsed.charts ?? []).map((c: any) => ({
+        title: c.title ?? "Chart",
+        type: c.type ?? "bar",
+        labels: c.labels ?? [],
+        values: c.values?.map((v: any) => Number(v)) ?? [],
+        colors: c.colors ?? []
+      }));
+
+      setCharts(chartsParsed);
+    } catch (err: any) {
+      setAnalysisText("Ошибка анализа: " + err.message);
     } finally {
-      setIsAnalyzing(false);
+      setLoading(false);
     }
   };
 
-  // Функция анализа данных (заглушка - замените на реальный вызов API)
-  const analyzeData = async (data: CSVData): Promise<{ insights: string; recommendations: string[] }> => {
-    // Имитация задержки API
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  // PDF Export
+  const exportPDF = async () => {
+    const pdf = new jsPDF("p", "pt", "a4");
 
-    // Простой анализ на основе данных
-    const numericColumns = data.headers.filter((header, index) => {
-      return data.rows.some(row => !isNaN(parseFloat(row[index])) && row[index].trim() !== '');
-    });
+    pdf.setFontSize(16);
+    pdf.text("AI Анализ", 20, 30);
 
-    const insights = `Найдено ${data.rows.length} строк и ${data.headers.length} колонок. 
-    Числовые колонки: ${numericColumns.join(', ')}. 
-    Рекомендуется построить графики для анализа распределения данных.`;
+    const lines = pdf.splitTextToSize(analysisText, 550);
+    pdf.setFontSize(12);
+    pdf.text(lines, 20, 55);
 
-    return {
-      insights,
-      recommendations: numericColumns.slice(0, 3) // Берем первые 3 числовые колонки
-    };
-  };
+    let y = 55 + lines.length * 15 + 30;
 
-  // Генерация графиков на основе данных
-  const generateCharts = (data: CSVData, recommendations: string[]): ChartData[] => {
-    const charts: ChartData[] = [];
+    const canvases = document.querySelectorAll("canvas");
 
-    // Находим числовые колонки
-    const numericColumns = data.headers.filter((header, index) => {
-      return data.rows.some(row => !isNaN(parseFloat(row[index])) && row[index].trim() !== '');
-    });
+    for (let i = 0; i < canvases.length; i++) {
+      const canvas = canvases[i];
 
-    numericColumns.slice(0, 3).forEach((column, columnIndex) => {
-      const columnIndexInData = data.headers.indexOf(column);
-      
-      // Собираем данные для графика
-      const values = data.rows
-        .map(row => parseFloat(row[columnIndexInData]))
-        .filter(value => !isNaN(value));
+      const img = await html2canvas(canvas).then((cnv) =>
+        cnv.toDataURL("image/png")
+      );
 
-      // Гистограмма распределения
-      charts.push({
-        type: 'bar',
-        title: `Распределение: ${column}`,
-        data: {
-          labels: ['0-25%', '25-50%', '50-75%', '75-100%'],
-          datasets: [{
-            label: `Количество значений`,
-            data: calculateDistribution(values),
-            backgroundColor: `rgba(54, 162, 235, 0.6)`,
-          }]
-        }
-      });
+      pdf.addImage(img, "PNG", 40, y, 520, 300);
+      y += 320;
 
-      // Линейный график тренда
-      if (values.length > 10) {
-        charts.push({
-          type: 'line',
-          title: `Тренд: ${column}`,
-          data: {
-            labels: values.slice(0, 20).map((_, i) => `Запись ${i + 1}`),
-            datasets: [{
-              label: column,
-              data: values.slice(0, 20),
-              borderColor: `rgba(255, 99, 132, 1)`,
-              backgroundColor: `rgba(255, 99, 132, 0.2)`,
-              // tension: 0.1
-            }]
-          }
-        });
+      if (y > 750) {
+        pdf.addPage();
+        y = 40;
       }
-    });
+    }
 
-    return charts;
+    pdf.save("analysis.pdf");
   };
 
-  // Расчет распределения данных для гистограммы
-  const calculateDistribution = (values: number[]): number[] => {
-    if (values.length === 0) return [0, 0, 0, 0];
-    
-    const sorted = [...values].sort((a, b) => a - b);
-    const min = sorted[0];
-    const max = sorted[sorted.length - 1];
-    const range = max - min;
+  // Render Chart
+  const renderChart = (c: any, idx: number) => {
+    const colors = c.colors?.length ? c.colors : c.labels.map(() => "#4ea1ff");
 
-    const buckets = [0, 0, 0, 0];
-    
-    values.forEach(value => {
-      const position = (value - min) / range;
-      if (position < 0.25) buckets[0]++;
-      else if (position < 0.5) buckets[1]++;
-      else if (position < 0.75) buckets[2]++;
-      else buckets[3]++;
-    });
+    const data = {
+      labels: c.labels,
+      datasets: [
+        {
+          label: c.title,
+          data: c.values,
+          backgroundColor: colors,
+          borderColor: colors,
+          borderWidth: 2
+        }
+      ]
+    };
 
-    return buckets;
-  };
-
-  // Очистить данные
-  const handleClear = () => {
-    setCsvData(null);
-    setFileName('');
-    setCharts([]);
-    setAnalysisResult('');
+    if (c.type === "pie") return <Pie key={idx} data={data} />;
+    if (c.type === "line") return <Line key={idx} data={data} />;
+    return <Bar key={idx} data={data} />;
   };
 
   return (
-    <div className="app">
-      <h1>📊 CSV Analyzer with AI</h1>
-      
-      {/* Загрузка файла */}
-      <div className="upload-section">
-        <h2>Загрузить CSV файл</h2>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={handleFileUpload}
-          className="file-input"
-        />
-        {isLoading && <p>📥 Загрузка...</p>}
+    <div className="app-layout app-container app">
+      <h1>📊 AI CSV Analyzer</h1>
+
+      <div style={{ textAlign: "center", marginBottom: 12 }}>
+        <input type="file" accept=".csv" onChange={handleFileUpload} />
       </div>
 
-      {/* Информация о файле */}
-      {fileName && (
-        <div className="file-info">
-          <h3>📄 Загруженный файл: {fileName}</h3>
-          <p>📏 Строк: {csvData ? csvData.rows.length : 0}</p>
-          <p>📊 Колонок: {csvData ? csvData.headers.length : 0}</p>
-          
-          <button 
-            onClick={analyzeWithAI} 
-            disabled={isAnalyzing || !csvData}
-            className="btn btn-analyze"
-          >
-            {isAnalyzing ? '🔍 Анализ...' : '🤖 Проанализировать с AI'}
-          </button>
-        </div>
-      )}
+      <div style={{ textAlign: "center", marginBottom: 18 }}>
+        <button className="analyze-button" disabled={loading} onClick={analyze}>
+          {loading ? "Анализ..." : `Анализировать (AI: ${provider})`}
+        </button>
 
-      {/* Результаты анализа */}
-      {analysisResult && (
-        <div className="analysis-result">
-          <h2>💡 Анализ AI</h2>
-          <p>{analysisResult}</p>
-        </div>
-      )}
-
-      {/* Графики */}
-      {charts.length > 0 && (
-        <div className="charts-section">
-          <h2>📈 Графики</h2>
-          <div className="charts-grid">
-            {charts.map((chart, index) => (
-              <div key={index} className="chart-container">
-                <h3>{chart.title}</h3>
-                <div className="chart">
-                  {chart.type === 'bar' ? (
-                    <Bar data={chart.data} options={{
-                      responsive: true,
-                      plugins: {
-                        title: { display: true, text: chart.title },
-                        legend: { position: 'top' }
-                      }
-                    }} />
-                  ) : (
-                    <Line data={chart.data} options={{
-                      responsive: true,
-                      plugins: {
-                        title: { display: true, text: chart.title },
-                        legend: { position: 'top' }
-                      }
-                    }} />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Предпросмотр данных */}
-      {csvData && !isAnalyzing && (
-        <div className="preview-section">
-          <h2>👀 Предпросмотр данных</h2>
-          <div className="table-container">
-            <table className="csv-table">
-              <thead>
-                <tr>
-                  {csvData.headers.map((header, index) => (
-                    <th key={index}>{header}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {csvData.rows.slice(0, 5).map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <td key={cellIndex}>{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {csvData.rows.length > 5 && (
-              <p>Показано первые 5 строк из {csvData.rows.length}</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Кнопки действий */}
-      <div className="actions">
-        {csvData && (
-          <button onClick={handleClear} className="btn btn-clear">
-            🗑️ Очистить
+        {analysisText && (
+          <button className="export-button" onClick={exportPDF}>
+            Экспорт в PDF
           </button>
         )}
       </div>
+
+      {analysisText && (
+        <div className="analysis-block">
+          <h2>AI Анализ</h2>
+          <pre className="analysis-text">{analysisText}</pre>
+        </div>
+      )}
+
+      {charts.length > 0 && (
+        <div className="charts-container">
+          {charts.map((c, i) => (
+            <div className="chart-wrapper" key={i}>
+              <h3>{c.title}</h3>
+              {renderChart(c, i)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
