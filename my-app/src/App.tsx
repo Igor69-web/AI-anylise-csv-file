@@ -1,7 +1,10 @@
-import './App.css';
+import "./App.css";
 import React, { useState } from "react";
 import Papa from "papaparse";
 import { Bar, Pie, Line } from "react-chartjs-2";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -71,15 +74,15 @@ export default function App() {
           const prompt = [
             {
               role: "system",
-              content: "Ты — ИИ для анализа CSV. Отвечай строго JSON без текста вокруг."
+              content: "Ты — ИИ для анализа CSV. Отвечай строго JSON без пояснений."
             },
             {
               role: "user",
               content: `
-Проанализируй этот CSV и верни **ТОЛЬКО JSON** строго в формате:
+Проанализируй CSV и верни строго JSON:
 
 {
-  "analysis": "текст анализа",
+  "analysis": "",
   "charts": [
     {
       "title": "",
@@ -93,19 +96,17 @@ export default function App() {
 
 CSV данные:
 ${JSON.stringify(results.data, null, 2)}
-
-Никаких дополнительных пояснений, только JSON.
 `
             }
           ];
 
           let raw = await callDeepSeek(prompt);
-          console.log("AI ответ:", raw);
 
           const match = raw.match(/\{[\s\S]*\}/);
           if (!match) throw new Error("AI вернул не JSON:\n" + raw);
 
           const parsed = JSON.parse(match[0]);
+
           setAnalysisText(parsed.analysis ?? "");
 
           const chartsClean = (parsed.charts ?? []).map((c: any) => ({
@@ -117,15 +118,51 @@ ${JSON.stringify(results.data, null, 2)}
           }));
 
           setCharts(chartsClean);
-
         } catch (e: any) {
-          console.error("Ошибка анализа:", e);
           alert("Ошибка анализа: " + e.message);
         } finally {
           setLoading(false);
         }
       }
     });
+  };
+
+  // =============================
+  // 📄 ЭКСПОРТ PDF
+  // =============================
+  const exportPDF = async () => {
+    const pdf = new jsPDF("p", "mm", "a4");
+    let yOffset = 10;
+
+    pdf.setFontSize(18);
+    pdf.text("AI CSV Анализ", 10, yOffset);
+    yOffset += 12;
+
+    pdf.setFontSize(12);
+    const wrapped = pdf.splitTextToSize(analysisText, 180);
+    pdf.text(wrapped, 10, yOffset);
+    yOffset += wrapped.length * 7 + 10;
+
+    const chartBlocks = document.querySelectorAll(".chart-card");
+
+    for (const block of Array.from(chartBlocks)) {
+      const canvas = await html2canvas(block as HTMLElement, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = 180;
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      if (yOffset + pdfHeight > 280) {
+        pdf.addPage();
+        yOffset = 10;
+      }
+
+      pdf.addImage(imgData, "PNG", 10, yOffset, pdfWidth, pdfHeight);
+      yOffset += pdfHeight + 10;
+    }
+
+    pdf.save("analysis.pdf");
   };
 
   const renderChart = (chart: any, index: number) => {
@@ -158,8 +195,14 @@ ${JSON.stringify(results.data, null, 2)}
 
       <div className="upload-block">
         <input type="file" accept=".csv" onChange={handleFileUpload} />
+
         <button onClick={analyze} disabled={loading}>
-          {loading ? "Анализирую..." : "Анализировать (AI: DeepSeek)"}
+          {loading ? "Анализирую..." : "Анализировать"}
+        </button>
+
+        {/* NEW: экспорт PDF */}
+        <button onClick={exportPDF} disabled={!analysisText}>
+          Экспорт в PDF
         </button>
       </div>
 
