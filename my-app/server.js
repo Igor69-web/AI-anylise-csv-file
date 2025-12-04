@@ -11,12 +11,7 @@ app.use(express.json());
 
 app.post("/api/deepseek", async (req, res) => {
   try {
-    const { messages } = req.body; // массив сообщений от фронтенда
-
-    const body = {
-      model: "deepseek-chat",
-      messages
-    };
+    const { messages } = req.body;
 
     const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -24,27 +19,48 @@ app.post("/api/deepseek", async (req, res) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.REACT_APP_DEEPSEEK_API_KEY}`
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        model: "deepseek-chat",    // рабочая модель
+        messages
+      })
     });
 
     const data = await response.json();
 
-    // безопасно выбираем текст
+    // === Нормализация ответа DeepSeek ===
     let text = "";
+
     if (typeof data === "string") {
       text = data;
-    } else if (data.text) {
-      text = data.text;
-    } else if (data.choices?.[0]?.message?.content) {
+    }
+
+    if (data?.choices?.[0]?.message?.content) {
       text = data.choices[0].message.content;
     }
+
+    if (data?.text && !text) {
+      text = data.text;
+    }
+
+    // Если пришёл JSON — удаляем форматирование
+    if (typeof text !== "string") {
+      text = JSON.stringify(text);
+    }
+
+    // === Убираем лишние JSON-блоки, кодовые блоки и "```json" ===
+    text = text
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
 
     res.json({ text });
 
   } catch (e) {
-    console.error(e);
+    console.error("DeepSeek Error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(5001, () => console.log("DeepSeek Proxy running on port 5001"));
+app.listen(5001, () =>
+  console.log("✅ DeepSeek Proxy running at http://localhost:5001")
+);
