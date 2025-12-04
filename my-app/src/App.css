@@ -11,112 +11,153 @@ body {
   transition: all 0.2s ease;
 }
 
-/* ========= CONTAINER ========= */
-.app, .app-container, .app-layout {
+/* ========= MAIN APP LAYOUT ========= */
+.app-container {
   max-width: 1200px;
-  margin: 48px auto;
+  margin: 40px auto;
   padding: 32px;
   border-radius: 22px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.05);
   backdrop-filter: blur(12px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 8px 40px rgba(0,0,0,0.3);
 }
 
-/* ========= TITLES ========= */
-h1 {
+/* ========= TITLE ========= */
+.title {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
   font-size: 2.4rem;
   font-weight: 700;
   color: #f4f8ff;
 }
 
 /* ========= FILE INPUT ========= */
-input[type="file"] {
+.upload-block input[type="file"] {
   padding: 12px 18px;
   border-radius: 14px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   cursor: pointer;
+  margin-bottom: 18px;
+  color: white;
 }
-input[type="file"]:hover {
+.upload-block input[type="file"]:hover {
   background: rgba(255,255,255,0.1);
 }
 
 /* ========= BUTTONS ========= */
-.analyze-button,
-.export-button {
+.upload-block button {
   padding: 12px 26px;
-  margin: 0 8px;
   border-radius: 14px;
   border: none;
   color: white;
   font-weight: 700;
   cursor: pointer;
   font-size: 1rem;
-}
-
-.analyze-button {
   background: linear-gradient(135deg, #ff8a3d, #f51d7d 60%);
 }
-.export-button {
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-}
-
-.analyze-button:hover,
-.export-button:hover {
+.upload-block button:hover {
   transform: translateY(-3px);
 }
-
-.analyze-button:disabled {
+.upload-block button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* ========= ANALYSIS BLOCK ========= */
-.analysis-block {
-  margin-top: 26px;
+.analysis-card {
+  margin-top: 30px;
   padding: 20px;
   border-radius: 16px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
 }
-
-.analysis-text {
+.analysis-card h2 {
+  margin-bottom: 12px;
+  color: #7be7ff;
+}
+.analysis-card p {
   white-space: pre-wrap;
   font-size: 0.95rem;
 }
 
 /* ========= CHARTS GRID ========= */
-.charts-container {
+.charts-grid {
   display: grid;
   gap: 22px;
   margin-top: 26px;
 }
-
 @media (min-width: 700px) {
-  .charts-container {
+  .charts-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 @media (min-width: 1200px) {
-  .charts-container {
+  .charts-grid {
     grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
-/* ========= CHART CARD ========= */
-.chart-wrapper {
+/* ========= CHART BLOCK ========= */
+.chart-card {
   padding: 18px;
   border-radius: 18px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
 }
-
-.chart-wrapper h3 {
+.chart-card h3 {
   text-align: center;
   margin-bottom: 12px;
   font-weight: 600;
   color: #7be7ff;
+}
+/* ========= UPLOAD + BUTTON BLOCK ========= */
+.upload-block {
+  display: flex;
+  flex-direction: column;  /* вертикально: input сверху, кнопка снизу */
+  align-items: center;     /* по центру горизонтали */
+  gap: 16px;               /* расстояние между input и кнопкой */
+  margin-bottom: 24px;
+}
+
+.upload-block input[type="file"] {
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+.upload-block input[type="file"]:hover {
+  background: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+}
+
+/* Кнопка */
+.upload-block button {
+  padding: 14px 32px;
+  border-radius: 16px;
+  border: none;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #ff8a3d, #f51d7d 60%);
+  box-shadow: 0 8px 20px rgba(255, 100, 150, 0.3);
+  transition: all 0.3s ease;
+}
+
+.upload-block button:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 12px 30px rgba(255, 100, 150, 0.4);
+}
+
+.upload-block button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
